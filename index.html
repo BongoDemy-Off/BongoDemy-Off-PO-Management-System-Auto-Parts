@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zaman Auto — PO Management System</title>
+  <meta name="description" content="Purchase Order management system for Zaman Auto. Track POs, VAT/TAX calculations, delivery status, and payment dates." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ===================== HEADER ===================== -->
+<header class="app-header">
+  <div class="header-brand">
+    <div class="header-logo">ZA</div>
+    <div>
+      <div class="header-title" id="headerCompany">Zaman Auto</div>
+      <div class="header-subtitle">PO Management System</div>
+    </div>
+  </div>
+  <div class="header-date" id="headerDate">—</div>
+</header>
+
+<!-- ===================== NAV TABS ===================== -->
+<nav class="nav-tabs">
+  <div class="nav-tab active" data-tab="new-po">➕ New PO</div>
+  <div class="nav-tab" data-tab="records">📋 PO Records <span class="badge" id="recordsBadge">0</span></div>
+  <div class="nav-tab" data-tab="vat">💰 VAT &amp; Tax</div>
+  <div class="nav-tab" data-tab="settings">⚙️ Settings</div>
+</nav>
+
+<!-- ===================== TOAST CONTAINER ===================== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ===================== MAIN ===================== -->
+<main class="main-content">
+
+  <!-- ============================================
+       SECTION: NEW PO
+  ============================================= -->
+  <section class="section active" id="sec-new-po">
+    <div class="page-header">
+      <div class="page-title">New <span>Purchase Order</span></div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="resetForm()">🔄 Reset</button>
+        <button class="btn btn-primary btn-lg" onclick="savePO()">💾 Save PO</button>
+      </div>
+    </div>
+
+    <form id="poForm" onsubmit="return false;">
+
+      <!-- CLIENT INFORMATION -->
+      <div class="card">
+        <div class="card-title">Client Information</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="clientName">Client Name <span style="color:var(--danger)">*</span></label>
+            <input type="text" class="form-control" id="clientName" placeholder="e.g. ABC Trading Ltd." />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="clientInfo">Client Address / Info</label>
+            <input type="text" class="form-control" id="clientInfo" placeholder="Dhaka, Bangladesh" />
+          </div>
+        </div>
+      </div>
+
+      <!-- PO DETAILS -->
+      <div class="card">
+        <div class="card-title">PO Details</div>
+        <div class="form-grid col-3">
+          <div class="form-group">
+            <label class="form-label" for="poNumber">PO Number <span style="color:var(--danger)">*</span></label>
+            <input type="text" class="form-control" id="poNumber" placeholder="e.g. PO-2024-001" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="poDate">PO Date <span style="color:var(--danger)">*</span></label>
+            <input type="date" class="form-control" id="poDate" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="taxMode">Tax Mode</label>
+            <select class="form-control" id="taxMode">
+              <option value="including">Including Tax (÷ 1+tax%)</option>
+              <option value="excluding">Excluding VAT (+ VAT%)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid col-1" style="margin-top:1rem;">
+          <div class="form-group">
+            <label class="form-label" for="productDetails">Product Details <span style="color:var(--danger)">*</span></label>
+            <textarea class="form-control" id="productDetails" rows="2" placeholder="Describe the product(s) or service(s)…"></textarea>
+          </div>
+        </div>
+
+        <div class="form-grid col-3" style="margin-top:1rem;">
+          <div class="form-group">
+            <label class="form-label" for="quantity">Quantity <span style="color:var(--danger)">*</span></label>
+            <input type="number" class="form-control" id="quantity" placeholder="0" min="0" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="unitPrice">Unit Price (৳) <span style="color:var(--danger)">*</span></label>
+            <input type="number" class="form-control" id="unitPrice" placeholder="0.00" min="0" step="0.01" />
+          </div>
+          <div class="form-group" style="justify-content:center; gap:12px;">
+            <label class="form-label">VAT &amp; TAX Rates</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <div class="input-suffix" style="flex:1;">
+                <input type="number" id="vatPct" placeholder="10" min="0" max="100" step="0.01" />
+                <span class="suffix">VAT %</span>
+              </div>
+              <div class="input-suffix" style="flex:1;">
+                <input type="number" id="taxPct" placeholder="3" min="0" max="100" step="0.01" />
+                <span class="suffix">TAX %</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIVE CALCULATION SUMMARY -->
+      <div class="card">
+        <div class="card-title">💡 Live Calculation Summary</div>
+        <div class="tax-summary">
+          <div class="tax-row">
+            <span class="tax-label">Including Tax (Base unit price excl. tax)</span>
+            <span class="tax-value" id="calcIncTax">৳ 0.00</span>
+          </div>
+          <div class="tax-row">
+            <span class="tax-label">Excluding VAT (Unit price + VAT)</span>
+            <span class="tax-value" id="calcExcVAT">৳ 0.00</span>
+          </div>
+          <div class="tax-row">
+            <span class="tax-label">Total VAT Amount</span>
+            <span class="tax-value" id="calcVAT">৳ 0.00</span>
+          </div>
+          <div class="tax-row">
+            <span class="tax-label">TDS (Tax Deducted at Source)</span>
+            <span class="tax-value" id="calcTDS">৳ 0.00</span>
+          </div>
+          <div class="tax-row total">
+            <span class="tax-label">✅ Total Receivable Amount (after VAT &amp; TAX)</span>
+            <span class="tax-value highlight" id="calcTotal">৳ 0.00</span>
+          </div>
+        </div>
+
+        <div class="info-box info" style="margin-top:1rem;">
+          <span>ℹ️</span>
+          <span>
+            <strong>Including Tax:</strong> Unit price ÷ (1 + TAX%) — backs out tax already included in price.<br>
+            <strong>Excluding VAT:</strong> Unit price + (Unit price × VAT%) — adds VAT on top of price.
+          </span>
+        </div>
+      </div>
+
+      <!-- DELIVERY STATUS -->
+      <div class="card">
+        <div class="card-title">🚚 Delivery Status</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="deliveryStatus">Delivery Status</label>
+            <select class="form-control" id="deliveryStatus">
+              <option value="pending">⏳ Pending</option>
+              <option value="partial">📦 Partially Delivered</option>
+              <option value="full">✅ Fully Delivered</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="deliveryDate">Delivery Date</label>
+            <input type="date" class="form-control" id="deliveryDate" />
+          </div>
+        </div>
+
+        <div id="partialPanel">
+          <div class="info-box info" style="margin-bottom:0.8rem;">
+            <span>📦</span>
+            <span>For partial delivery, enter the delivered quantity. The bill will be generated using this quantity only. The full PO quantity is preserved for reference.</span>
+          </div>
+          <div class="form-group" style="max-width:260px;">
+            <label class="form-label" for="partialQty">Delivered Quantity</label>
+            <input type="number" class="form-control" id="partialQty" placeholder="e.g. 5" min="0" step="0.01" />
+          </div>
+        </div>
+      </div>
+
+      <!-- PAYMENT SECTION -->
+      <div class="card">
+        <div class="card-title">💳 Payment Details</div>
+        <div class="wdc-grid">
+          <div class="form-group">
+            <label class="form-label" for="paymentDays">Payment Terms (Working Days)</label>
+            <div class="input-suffix">
+              <input type="number" id="paymentDays" value="15" min="1" max="365" />
+              <span class="suffix">days</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estimated Payment Date</label>
+            <div class="result-badge" id="estimatedPayDate">— (set delivery date)</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Working Days Since Delivery</label>
+            <div class="result-badge" id="workingDaysCount">—</div>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="chequeNumber">Cheque Number</label>
+            <input type="text" class="form-control" id="chequeNumber" placeholder="e.g. CH-00123" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="chequeDate">Cheque Date</label>
+            <input type="date" class="form-control" id="chequeDate" />
+          </div>
+        </div>
+      </div>
+
+      <!-- NOTES -->
+      <div class="card">
+        <div class="card-title">📝 Notes</div>
+        <div class="form-group">
+          <textarea class="form-control" id="notes" rows="3" placeholder="Any additional notes or remarks…"></textarea>
+        </div>
+      </div>
+
+      <!-- SAVE BUTTON (bottom) -->
+      <div style="display:flex; justify-content:flex-end; gap:12px; margin-bottom:2rem;">
+        <button type="button" class="btn btn-outline" onclick="resetForm()">🔄 Reset Form</button>
+        <button type="button" class="btn btn-primary btn-lg" onclick="savePO()">💾 Save Purchase Order</button>
+      </div>
+
+    </form>
+  </section>
+
+
+  <!-- ============================================
+       SECTION: PO RECORDS
+  ============================================= -->
+  <section class="section" id="sec-records">
+    <div class="page-header">
+      <div class="page-title">PO <span>Records</span></div>
+      <div class="btn-group">
+        <input type="text" class="form-control" id="searchInput" placeholder="🔍 Search by client, PO#, product…" style="width:280px;" />
+        <button class="btn btn-accent" onclick="exportCSV()">📥 Export CSV</button>
+      </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-icon green">📋</div>
+        <div>
+          <div class="stat-num" id="statTotal">0</div>
+          <div class="stat-lbl">Total POs</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow">⏳</div>
+        <div>
+          <div class="stat-num" id="statPending">0</div>
+          <div class="stat-lbl">Pending</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue">📦</div>
+        <div>
+          <div class="stat-num" id="statPartial">0</div>
+          <div class="stat-lbl">Partial</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div>
+          <div class="stat-num" id="statFull">0</div>
+          <div class="stat-lbl">Full Delivered</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box success" style="margin-bottom:1.2rem;">
+      <span>💰</span>
+      <span>Total Portfolio Value (all POs): <strong id="statValue">৳ 0.00</strong></span>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>PO #</th>
+            <th>PO Date</th>
+            <th>Client</th>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Bill Amount</th>
+            <th>Status</th>
+            <th>Cheque #</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="recordsTbody">
+          <tr><td colspan="10" class="table-empty">📭 No PO records yet. Create your first PO!</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+
+  <!-- ============================================
+       SECTION: VAT & TAX TABLE
+  ============================================= -->
+  <section class="section" id="sec-vat">
+    <div class="page-header">
+      <div class="page-title">VAT &amp; <span>Tax Records</span></div>
+      <button class="btn btn-accent" onclick="exportCSV()">📥 Export CSV</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Calculation Reference</div>
+      <div class="form-grid">
+        <div class="info-box info">
+          <span>💡</span>
+          <span>
+            <strong>Including Tax mode:</strong><br>
+            Base = Given Unit Price ÷ (1 + TAX%)<br>
+            Tax in price = Unit Price − Base<br>
+            VAT is added on the base price.
+          </span>
+        </div>
+        <div class="info-box warning">
+          <span>💡</span>
+          <span>
+            <strong>Excluding VAT mode:</strong><br>
+            Total = Unit Price + (Unit Price × VAT%)<br>
+            TDS = Unit Price × TAX%<br>
+            VAT is added on top of unit price.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>PO Number</th>
+            <th>PO Date</th>
+            <th>Cheque Number</th>
+            <th>Cheque Date</th>
+            <th>Sub Total (৳)</th>
+            <th>Bill Amount (৳)</th>
+            <th>VDS/VAT (৳)</th>
+            <th>TDS/TAX (৳)</th>
+            <th>Mode</th>
+          </tr>
+        </thead>
+        <tbody id="vatTbody">
+          <tr><td colspan="9" class="table-empty">📭 No records yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+
+  <!-- ============================================
+       SECTION: SETTINGS
+  ============================================= -->
+  <section class="section" id="sec-settings">
+    <div class="page-header">
+      <div class="page-title">⚙️ <span>Settings</span></div>
+    </div>
+
+    <div class="card" style="max-width:640px;">
+      <div class="card-title">Company Information</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="sCompany">Company Name</label>
+          <input type="text" class="form-control" id="sCompany" placeholder="Zaman Auto" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="sAddress">Company Address</label>
+          <input type="text" class="form-control" id="sAddress" placeholder="Dhaka, Bangladesh" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:640px;">
+      <div class="card-title">Default Tax &amp; Payment Settings</div>
+      <div class="info-box info" style="margin-bottom:1rem;">
+        <span>ℹ️</span>
+        <span>These are the default values pre-filled in each new PO form. You can override them per-PO as needed.</span>
+      </div>
+      <div class="form-grid col-3">
+        <div class="form-group">
+          <label class="form-label" for="sVat">Default VAT %</label>
+          <div class="input-suffix">
+            <input type="number" id="sVat" placeholder="10" min="0" max="100" step="0.01" />
+            <span class="suffix">%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="sTax">Default TAX %</label>
+          <div class="input-suffix">
+            <input type="number" id="sTax" placeholder="3" min="0" max="100" step="0.01" />
+            <span class="suffix">%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="sDays">Default Payment Days</label>
+          <div class="input-suffix">
+            <input type="number" id="sDays" placeholder="15" min="1" />
+            <span class="suffix">days</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:1.2rem;">
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:640px;">
+      <div class="card-title">Weekend Configuration</div>
+      <div class="info-box info">
+        <span>🗓️</span>
+        <span>The system uses <strong>Friday &amp; Saturday as non-working days</strong> (Bangladesh standard). Working-day calculations skip these days when estimating payment dates.</span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+
+<!-- ============================================
+     BILL VIEW MODAL
+============================================= -->
+<div id="billView" aria-modal="true" role="dialog">
+  <div class="bill-dialog">
+    <div class="bill-dialog-header no-print">
+      <span style="font-weight:700; font-size:1rem; color:var(--primary-dark);">🧾 Purchase Order Bill</span>
+      <div class="btn-group">
+        <button class="btn btn-primary btn-sm" onclick="printBill()">🖨️ Print Bill</button>
+        <button class="bill-close" onclick="closeBill()" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="bill-content">
+      <div id="printArea"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
